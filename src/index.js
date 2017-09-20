@@ -77,12 +77,16 @@ export class ReactNativeModal extends Component {
     deviceHeight: Dimensions.get('window').height,
   };
 
+  transitionState = 'closed';
+  transitionPromise = null;
+
   constructor(props) {
     super(props);
     this._buildAnimations(props);
   }
 
   componentWillReceiveProps(nextProps) {
+    console.log(`new props, isVisible=${nextProps.isVisible}`);
     if (!this.state.isVisible && nextProps.isVisible) {
       this.setState({ isVisible: true });
     }
@@ -101,7 +105,8 @@ export class ReactNativeModal extends Component {
   }
 
   componentDidMount() {
-    if (this.state.isVisible) {
+    if (this.props.isVisible) {
+      console.log('opening via mount');
       this._open();
     }
     DeviceEventEmitter.addListener('didUpdateDimensions', this._handleDimensionsUpdate);
@@ -113,10 +118,11 @@ export class ReactNativeModal extends Component {
 
   componentDidUpdate(prevProps, prevState) {
     // On modal open request, we slide the view up and fade in the backdrop
-    if (this.state.isVisible && !prevState.isVisible) {
+    if (this.props.isVisible) {
       this._open();
-      // On modal close request, we slide the view down and fade out the backdrop
-    } else if (!this.props.isVisible && prevProps.isVisible) {
+    }
+    // On modal close request, we slide the view down and fade out the backdrop
+    else {
       this._close();
     }
   }
@@ -149,22 +155,51 @@ export class ReactNativeModal extends Component {
     }
   };
 
+  _cancel = () => {
+    this.backdropRef.stopAnimation();
+    this.contentRef.stopAnimation();
+  };
+
   _open = () => {
-    this.backdropRef.transitionTo(
+    if (this.transitionState === 'opening' || this.transitionState === 'open') return;
+    if (this.transitionPromise) {
+      this.transitionPromise.then(this._open);
+      this._cancel();
+      return;
+    }
+    console.log(`open animation starting, isVisible=${this.props.isVisible}, state.isVisible=${this.state.isVisible}`);
+    this.transitionState = 'opening';
+    const p1 = this.backdropRef.transitionTo(
       { opacity: this.props.backdropOpacity },
       this.props.backdropTransitionInTiming,
     );
-    this.contentRef[this.animationIn](this.props.animationInTiming).then(() => {
-      if (this.props.isVisible) {
+    const p2 = this.contentRef[this.animationIn](this.props.animationInTiming);
+    this.transitionPromise = Promise.all([p1, p2]).then(() => {
+      console.log(`open animation isVisible=${this.props.isVisible}`);
+      this.transitionPromise = null;
+      if (this.props.isVisible && this.transitionState === 'opening') {
+        this.transitionState = 'open';
         this.props.onModalShow();
       }
     });
   };
 
   _close = () => {
-    this.backdropRef.transitionTo({ opacity: 0 }, this.props.backdropTransitionOutTiming);
-    this.contentRef[this.animationOut](this.props.animationOutTiming).then(() => {
-      if (!this.props.isVisible) {
+    if (this.transitionState === 'closing' || this.transitionState === 'closed') return;
+    if (this.transitionPromise) {
+      this.transitionPromise.then(this._open);
+      this._cancel();
+      return;
+    }
+    console.log(`closing animation starting, isVisible=${this.props.isVisible}, state.isVisible=${this.state.isVisible}`);
+    this.transitionState = 'closing';
+    const p1 = this.backdropRef.transitionTo({ opacity: 0 }, this.props.backdropTransitionOutTiming);
+    const p2 = this.contentRef[this.animationOut](this.props.animationOutTiming);
+    this.transitionPromise = Promise.all([p1, p2]).then(() => {
+      console.log(`closing animation isVisible=${this.props.isVisible}`);
+      this.transitionPromise = null;
+      if (!this.props.isVisible && this.transitionState === 'closing') {
+        this.transitionState = 'closed';
         this.setState({ isVisible: false });
         this.props.onModalHide();
       }
