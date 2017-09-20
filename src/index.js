@@ -159,7 +159,7 @@ export class ReactNativeModal extends Component {
     });
   };
 
-  _close = async () => {
+  _close = () => {
     this.backdropRef.transitionTo({ opacity: 0 }, this.props.backdropTransitionOutTiming);
     this.contentRef[this.animationOut](this.props.animationOutTiming).then(() => {
       this.setState({ isVisible: false });
@@ -196,7 +196,7 @@ export class ReactNativeModal extends Component {
 
     const containerView = (
       <View
-        ref={ref => (this.contentRef = ref)}
+        ref={ref => (this.contentRef = ref || this.contentRef)}
         style={computedStyle}
         pointerEvents={'box-none'}
         {...otherProps}
@@ -215,7 +215,7 @@ export class ReactNativeModal extends Component {
       >
         <TouchableWithoutFeedback onPress={onBackdropPress}>
           <View
-            ref={ref => (this.backdropRef = ref)}
+            ref={ref => (this.backdropRef = ref || this.backdropRef)}
             style={[
               styles.backdrop,
               {
