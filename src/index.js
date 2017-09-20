@@ -77,6 +77,8 @@ export class ReactNativeModal extends Component {
     deviceHeight: Dimensions.get('window').height,
   };
 
+  transitionLock = null;
+
   constructor(props) {
     super(props);
     this._buildAnimations(props);
@@ -150,20 +152,36 @@ export class ReactNativeModal extends Component {
   };
 
   _open = () => {
+    if (this.transitionLock) return;
+    this.transitionLock = true;
     this.backdropRef.transitionTo(
       { opacity: this.props.backdropOpacity },
       this.props.backdropTransitionInTiming,
     );
     this.contentRef[this.animationIn](this.props.animationInTiming).then(() => {
-      this.props.onModalShow();
+      this.transitionLock = false;
+      if (!this.props.isVisible) {
+        this._close();
+      }
+      else {
+        this.props.onModalShow();
+      }
     });
   };
 
-  _close = async () => {
+  _close = () => {
+    if (this.transitionLock) return;
+    this.transitionLock = true;
     this.backdropRef.transitionTo({ opacity: 0 }, this.props.backdropTransitionOutTiming);
     this.contentRef[this.animationOut](this.props.animationOutTiming).then(() => {
-      this.setState({ isVisible: false });
-      this.props.onModalHide();
+      this.transitionLock = false;
+      if (this.props.isVisible) {
+        this._open();
+      }
+      else {
+        this.setState({ isVisible: false });
+        this.props.onModalHide();
+      }
     });
   };
 
