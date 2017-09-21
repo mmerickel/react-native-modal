@@ -115,10 +115,11 @@ export class ReactNativeModal extends Component {
 
   componentDidUpdate(prevProps, prevState) {
     // On modal open request, we slide the view up and fade in the backdrop
-    if (this.state.isVisible && !prevState.isVisible) {
+    if (this.props.isVisible && !prevProps.isVisible) {
       this._open();
-      // On modal close request, we slide the view down and fade out the backdrop
-    } else if (!this.props.isVisible && prevProps.isVisible) {
+    }
+    // On modal close request, we slide the view down and fade out the backdrop
+    else if (!this.props.isVisible && prevProps.isVisible) {
       this._close();
     }
   }
